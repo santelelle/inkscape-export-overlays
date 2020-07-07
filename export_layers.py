@@ -15,11 +15,11 @@ class PNGExport(inkex.Effect):
     def __init__(self):
         """init the effetc library and get options from gui"""
         inkex.Effect.__init__(self)
-        self.OptionParser.add_option("--path", action="store", type="string", dest="path", default="~/", help="")
-        self.OptionParser.add_option("--filename_prefix", action="store", type="string", dest="filename_prefix", default="", help="")
-        self.OptionParser.add_option('-f', '--filetype', action='store', type='string', dest='filetype', default='jpeg', help='Exported file type')
-        self.OptionParser.add_option("--crop", action="store", type="inkbool", dest="crop", default=False)
-        self.OptionParser.add_option("--dpi", action="store", type="float", dest="dpi", default=90.0)
+        self.arg_parser.add_argument("--path", action="store", dest="path", default="~/", help="")
+        self.arg_parser.add_argument("--filename_prefix", action="store", dest="filename_prefix", default="", help="")
+        self.arg_parser.add_argument('-f', '--filetype', action='store', dest='filetype', default='jpeg', help='Exported file type')
+        self.arg_parser.add_argument("--crop", action="store", type=bool, dest="crop", default=False)
+        self.arg_parser.add_argument("--dpi", action="store", type=int, dest="dpi", default=90)
 
     def is_layer_in_range(self, layer, current):
         if isinstance(layer[2], tuple) and layer[2][0] == 'numbered':
@@ -29,7 +29,7 @@ class PNGExport(inkex.Effect):
 
     def effect(self):
         output_path = os.path.expanduser(self.options.path)
-        curfile = self.args[-1]
+        curfile = self.options.input_file
         layers, maxlayer = self.get_layers(curfile)
 
         for counter in range(1, maxlayer+1):
@@ -132,11 +132,12 @@ class PNGExport(inkex.Effect):
         p.wait()
 
     def exportToLatex(self, svg_path, output_path):
-        area_param = '-D' if self.options.crop else 'C'
-        command = "inkscape %s -d %s --export-pdf \"%s\" --export-latex \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
+        area_param = '-C' #'-D' if self.options.crop else '-C'
+        command = "inkscape %s -d %s --export-filename \"%s\" --export-latex \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
 
-        p = subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p.wait()
+        with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            p.wait()
+            p.kill()
 
     def convertPngToJpg(self, png_path, output_path):
         command = "convert \"%s\" \"%s\"" % (png_path, output_path)
@@ -146,7 +147,7 @@ class PNGExport(inkex.Effect):
 
 def _main():
     e = PNGExport()
-    e.affect()
+    e.run()
     exit()
 
 if __name__ == "__main__":
