@@ -118,18 +118,20 @@ class PNGExport(inkex.Effect):
         return (layers, maxlayer)
 
     def exportToPng(self, svg_path, output_path):
-        area_param = '-D' if self.options.crop else 'C'
+        area_param = '-C' #'-D' if self.options.crop else '-C'
         command = "inkscape %s -d %s -e \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
 
-        p = subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p.wait()
+        with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            p.wait()
+            p.kill()
 
     def exportToPdf(self, svg_path, output_path):
-        area_param = '-D' if self.options.crop else 'C'
+        area_param = '-C' #'-D' if self.options.crop else '-C'
         command = "inkscape %s -d %s --export-pdf \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
 
-        p = subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p.wait()
+        with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            p.wait()
+            p.kill()
 
     def exportToLatex(self, svg_path, output_path):
         area_param = '-C' #'-D' if self.options.crop else '-C'
@@ -141,8 +143,9 @@ class PNGExport(inkex.Effect):
 
     def convertPngToJpg(self, png_path, output_path):
         command = "convert \"%s\" \"%s\"" % (png_path, output_path)
-        p = subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p.wait()
+        with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            p.wait()
+            p.kill()
 
 
 def _main():
