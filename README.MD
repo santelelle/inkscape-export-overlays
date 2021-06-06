@@ -5,13 +5,13 @@ Inkscape extension to export SVG layers as (JPG, PNG, PDF, LaTeX+PDF) images. Th
 ## How it works
 To export your Inkscape file as an image open an inkscape file with multiple layers (otherwise you can simply use the in-built export tool).
 
-Layers are assigned views (virtual groups of layers) that are number from `1` to `n`. For each view `i`, an image is exported that contains all fixed layers and all layers that are active in view `i`.
+Layers are assigned frames (virtual groups of layers) that are number from `1` to `n`. For each frame `i`, an image is exported that contains all fixed layers and all layers that are active in frame `i`.
 
 There are two options for your layers when exporting:
--  **numbered**: If a layer label starts with `[i-j]`, `[i-]` or `[-j]`, this layer will be active in views `i` to `j`. The default values `i=1` and `j=∞` are used when `i` and `j` are not given, respectively. Technically, the matching regular expression is `\[(\d*)-(\d*)\]\s*`.
+-  **numbered**: If a layer label starts with `[i-j]`, `[i-]` or `[-j]`, this layer will be active in frames `i` to `j`. The default values `i=1` and `j=∞` are used when `i` and `j` are not given, respectively. Multiple intervals can be separated by `,`. For example, `[2-4,6-]` will print the corresponding layer on frames 2,3,4 and on frame 6 until the last frame. Technically, the matching regular expression is `\[(\d*-\d*(,\d*-\d*)*)\]`.
 - **fixed**: If a layer label starts with `[fixed]`, this layer will always be exported and combined with other layers. It is very useful for backgrounds or fixed elements. This is a more readable version of `[-]`.
 
-The maximum number of views is the maximum value of `i` and `j` of all numbered layers.
+The maximum number of frames is the maximum value of `i` and `j` of all numbered layers.
 
 ## Using it
 To use the extension once your layers are ready:
