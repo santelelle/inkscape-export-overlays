@@ -114,7 +114,6 @@ class PNGExport(inkex.Effect):
                     begin = interval["begin"] if "begin" in interval else 1
                     end = interval["end"] if "end" in interval else maxlayer
                     layer["show_on"] += [*range(begin, end+1)]
-            inkex.debug(layer)
 
         return (layers, maxlayer)
 
