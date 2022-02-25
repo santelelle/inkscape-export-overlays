@@ -83,7 +83,7 @@ class PNGExport(EffectExtension):
                 raise AttributeError
 
         n_layers = len(layers)
-        reg = re.compile('\[((-?\d*\/-?\d*|[a-z]|-?\d+)(,-?\d*\/-?\d*|,[a-z]|,-?\d+)*)\]')
+        reg = re.compile('\[(([@]?-?\d*\/[@]?-?\d*|[a-z]|[@]?-?\d+)(,[@]?-?\d*\/[@]?-?\d*|,[a-z]|,[@]?-?\d+)*)\]')
 
         # ? the actions give a specific function to the specific layer, for example [s] always skip the layer
         layers_actions = []
@@ -108,7 +108,14 @@ class PNGExport(EffectExtension):
                         # ? [/] or [number/] or [/number] select the specified layers range with relative position
                         # ?     where the empty position is the min or max layer number
                         if len(boundaries) == 1:
-                            if boundaries[0].isnumeric():
+                            if boundaries[0][0] == '@':
+                                boundaries[0] = boundaries[0][1:]
+                                start = int(boundaries[0])
+                                if start < 0:
+                                    start += n_layers
+                                end = start + 1
+                                frames.append([start, end])
+                            elif boundaries[0].isnumeric():
                                 start = int(boundaries[0]) + i
                                 end = int(boundaries[0]) + 1 + i
                                 if start < 0 or end > n_layers:
@@ -119,11 +126,30 @@ class PNGExport(EffectExtension):
                                     raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
                                 actions.append(boundaries[0])
                         elif len(boundaries) == 2:
+                            if boundaries[0][0] == '@':
+                                boundaries[0] = boundaries[0][1:]
+                                start = int(boundaries[0]) if boundaries[0] != '' else 0
+                                if start < 0:
+                                    start += n_layers
+                            else:
+                                start = int(boundaries[0]) + i if boundaries[0] != '' else 0
+                                if start < 0:
+                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
+                            if boundaries[1][0] == '@':
+                                boundaries[1] = boundaries[1][1:]
+                                end = int(boundaries[1]) if boundaries[1] != '' else n_layers + 1
+                                if end >= 0:
+                                    end += 1
+                                else:
+                                    end += n_layers
+                            else:
+                                end = int(boundaries[1]) + i + 1 if boundaries[1] != '' else n_layers + 1
+                                if end > n_layers:
+                                    raise ValueError(f'invalid tag {boundaries[1]} on layer {label}')
+
                             # ? if the start or the end are not specified, use the max range
-                            start = int(boundaries[0]) if boundaries[0] != '' else 0 + i
-                            end = int(boundaries[1]) + 1 if boundaries[1] != '' else n_layers + i
-                            if start < 0 or end > n_layers:
-                                raise ValueError(f'exceeding layers range {boundaries[0]} on layer {label}')
+                            # if start < 0 or end > n_layers:
+                            #     raise ValueError(f'exceeding layers range {boundaries[0]} on layer {label}')
                             frames.append([start, end])
                         else:
                             raise ValueError(f'empty tag is not valid on layer {label}')
@@ -149,7 +175,8 @@ class PNGExport(EffectExtension):
                     export_index.append(j)
                 # ? check if the current layer is inside any frame
                 for start, end in layer_frames:
-                    if start <= j < end:
+                    indexes = list(range(n_layers))[start:end]
+                    if j in indexes:
                         export_index.append(j)
                         break
 

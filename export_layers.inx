@@ -18,11 +18,11 @@
         <page name="about_tab" gui-text="About">
             <label appearance="header">Layer export</label>
             <label>Use the following tags at the beginning of the layer names to select what to export. The name of the exported image will be the one of the layer.
-                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]) </label>
+                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>
             <label>Range tags: </label>
-            <label>[N/M] export one image with all the layers from N below to M above </label>
+            <label>[N/M] export one image with all the layers from N below to M above (use @N for absolute indexing) </label>
             <label>[/M], [N/], [/] same as above, if one extreme is not specified all the layer in that direction are selected </label>
-            <label>[N] export only the N-th layer, if 0 export the current </label>
+            <label>[N] export only the relative N-th layer, if 0 export the current (use @N for absolute index)</label>
             <label>Action tags: </label>
             <label>[s] skip: always skip exporting this layer </label>
             <label>[p] persistent: always export this layer </label>
