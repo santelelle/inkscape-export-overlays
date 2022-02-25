@@ -3,21 +3,39 @@
     <_name>Export Layers</_name>
     <id>net.kaleidos.export.layers</id>
     <dependency type="executable" location="extensions">export_layers.py</dependency>
-	<param name="help" type="description">Export your file in different png files by layer</param>
-    <param name="path" type="string"  _gui-text="Choose path to export">~/</param>
-    <param name="filename_prefix" type="string"  _gui-text="Choose filename prefix"></param>
-    <param name="filetype" type="optiongroup" gui-text="Export layers as..." appearance="minimal">
-       <option value="png">PNG</option>
-       <option value="pdf">PDF</option>
-       <option selected="selected" value="latex">PDF + LaTeX</option>
+
+	<param name="tab" type="notebook">
+        <page name="slicer_tab" gui-text="Options">
+            <param name="path" type="string" gui-text="Choose path to export">~/</param>
+            <param name="filename_prefix" type="string" gui-text="Choose filename prefix"></param>
+            <param name="filetype" type="optiongroup" gui-text="Export layers as..." appearance="minimal">
+               <option value="png">PNG</option>
+               <option value="pdf">PDF</option>
+               <option selected="selected" value="latex">PDF + LaTeX</option>
+            </param>
+            <param name="dpi" type="float" min="0.0" max="1000.0" gui-text="Export DPI">300</param>
+        </page>
+        <page name="about_tab" gui-text="About">
+            <label appearance="header">Layer export</label>
+            <label>Use the following tags at the beginning of the layer names to select what to export. The name of the exported image will be the one of the layer.
+                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]) </label>
+            <label>Range tags: </label>
+            <label>[N/M] export one image with all the layers from N below to M above </label>
+            <label>[/M], [N/], [/] same as above, if one extreme is not specified all the layer in that direction are selected </label>
+            <label>[N] export only the N-th layer, if 0 export the current </label>
+            <label>Action tags: </label>
+            <label>[s] skip: always skip exporting this layer </label>
+            <label>[p] persistent: always export this layer </label>
+        </page>
     </param>
-    <param name="dpi" type="float" min="0.0" max="1000.0" _gui-text="Export DPI">90</param>
+
     <effect needs-live-preview="false">
         <object-type>all</object-type>
         <effects-menu>
-            <submenu _name="Export" />
+            <submenu name="Export" />
         </effects-menu>
     </effect>
+
     <script>
         <command reldir="extensions" interpreter="python">export_layers.py</command>
     </script>

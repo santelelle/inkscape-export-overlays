@@ -5,12 +5,15 @@ Inkscape extension to export SVG layers as (JPG, PNG, PDF, LaTeX+PDF) images. Th
 ## How it works
 To export your Inkscape file as an image open an inkscape file with multiple layers (otherwise you can simply use the in-built export tool).
 
-Layers are assigned frames (virtual groups of layers) that are number from `1` to `n`. For each frame `i`, an image is exported that contains all fixed layers and all layers that are active in frame `i`.
+At each layer a tag (or multiple of them) can be specified by writing it in front of the layer name.
+There are different kind of tags:
+- **ranges**: `[N-M]`, `[N/]`, `[/M]`, or `[/]` The layers from the current one minus N to the current one plus M (number increases going up in the inkscape layers view) will we exported. The name of the exported file will be the name of the layer without the tags. If one of the two boundaries is not specified, we assume as limit the first or the last layer
+- **single**: `[N]` Export the N-th layer relative to the current one, 0 for exporting the current one
+- **actions**: Different special actions can be specified
+  - `[s]` skip: the current layer will never be exported, even if inside a specified range elsewhere
+  - `[p]` persistent: the current layer will always be exported no matter the specified ranges
 
-There are two options for your layers when exporting:
--  **numbered**: If a layer label starts with `[i-j]`, `[i-]` or `[-j]`, this layer will be active in frames `i` to `j`. The default values `i=1` and `j=∞` are used when `i` and `j` are not given, respectively. Multiple intervals can be separated by `,`. For example, `[2-4,6-]` will print the corresponding layer on frames 2,3,4 and on frame 6 until the last frame. Technically, the matching regular expression is `\[(\d*-\d*(,\d*-\d*)*)\]`.
-- **fixed**: If a layer label starts with `[fixed]`, this layer will always be exported and combined with other layers. It is very useful for backgrounds or fixed elements. This is a more readable version of `[-]`.
-
+Multiple tags can be concatenated (e.g. `[0/2, 4, p]`)
 The maximum number of frames is the maximum value of `i` and `j` of all numbered layers.
 
 ## Using it
