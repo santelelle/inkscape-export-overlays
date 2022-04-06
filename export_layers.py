@@ -43,6 +43,7 @@ class PNGExport(EffectExtension):
         self.arg_parser.add_argument("--tab")  # ? dummy args just for inkscape
         self.arg_parser.add_argument("--path", action="store", dest="path", default="~/", help="")
         self.arg_parser.add_argument("--filename_prefix", action="store", dest="filename_prefix", default="", help="")
+        self.arg_parser.add_argument("--filename_postfix", action="store", dest="filename_postfix", default="", help="")
         self.arg_parser.add_argument('-f', '--filetype', action='store', dest='filetype', default='png',
                                      help='Exported file type')
         self.arg_parser.add_argument("--dpi", action="store", type=int, dest="dpi", default=300)
@@ -218,7 +219,7 @@ class PNGExport(EffectExtension):
             os.makedirs(os.path.join(output_dir))
 
         for export_group in export_groups:
-            filename = f'{self.options.filename_prefix}{export_group.name}'
+            filename = f'{self.options.filename_prefix}{export_group.name}{self.options.filename_postfix}'
 
             with tempfile.NamedTemporaryFile() as fp_svg:
                 dummy_path = Path(fp_svg.name)

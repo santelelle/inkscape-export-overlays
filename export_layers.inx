@@ -8,6 +8,7 @@
         <page name="slicer_tab" gui-text="Options">
             <param name="path" type="string" gui-text="Choose path to export">~/</param>
             <param name="filename_prefix" type="string" gui-text="Choose filename prefix"></param>
+            <param name="filename_postfix" type="string" gui-text="Choose filename postfix"></param>
             <param name="filetype" type="optiongroup" gui-text="Export layers as..." appearance="minimal">
                <option value="png">PNG</option>
                <option value="pdf">PDF</option>
