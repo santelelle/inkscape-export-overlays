@@ -248,7 +248,7 @@ if __name__ == "__main__":
     if args.debug:
         RUNNING_IN_INKSCAPE = False
         print('running in pycharm')
-        input_file = '/home/lele/drive/Tablescope/pinata/Deck/pinata_template.svg'
+        input_file = '/home/lele/drive/Tablescope/github_repo_graphics/lightspeed/original/mineral_export.svg'
         PNGExport().run([input_file, '--path', str(args.path)])
         # PNGExport().run([input_file, '--output=' + output_file])
     else:
