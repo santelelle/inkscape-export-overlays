@@ -18,15 +18,43 @@
         </page>
         <page name="about_tab" gui-text="About">
             <label appearance="header">Layer export</label>
-            <label>Use the following tags at the beginning of the layer names to select what to export. The name of the exported image will be the one of the layer.
-                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>
+
+            <label> Use the following tags at the beginning of the layer names to select what to export. (Example layer name: [3/4]layername) </label>
+            <label> The name of the exported image will be the one of the tagged layer (with additional constant suffix/prefix that can be specified in the interface) </label>
+
             <label>Range tags: </label>
-            <label>[N/M] export one image with all the layers from N below to M above (use @N for absolute indexing) </label>
-            <label>[/M], [N/], [/] same as above, if one extreme is not specified all the layer in that direction are selected </label>
-            <label>[N] export only the relative N-th layer, if 0 export the current (use @N for absolute index)</label>
+            <label>- [@N/@M] select all the layers from the N-th to the M-th. The @ define an absolute coordinate. </label>
+            <label>When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>
+            <label>Example: [@3, @-2] exports all the layers starting from the absolute 3rd layer (starting from the top) and the second to last layer </label>
+            <label>- [N/M] select all the layers from the N-th to M-th relative to the current layer. </label>
+            <label>Example: [-2, 3] exports all the layers starting from the one 2 positions above to the one 3 positions below </label>
+            <label>- [/M], [N/], [/], [/@M], [@N/] same as the two cases above, if one extreme is not specified all the layer in that direction are selected. </label>
+            <label>Example: [/N] exports all the layer from the first one to the N-th relative to the current layer </label>
+            <label>Example: [/@N] exports all the layer from the first one to the absolute N-th layer </label>
+            <label>- [N] export only the relative N-th layer. </label>
+            <label>Example: [0] exports only the current layer </label>
+            <label>Example: [-1] exports only the layer above the current </label>
+
             <label>Action tags: </label>
-            <label>[s] skip: always skip exporting this layer </label>
-            <label>[p] persistent: always export this layer </label>
+            <label>- [s] skip: always skip exporting this layer, even if it's included in a range </label>
+            <label>- [p] persistent: always export this layer, no matter if it's included in ranges </label>
+
+            <label>Concatenation: </label>
+            <label>- Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). </label>
+            <label>Example: [0, @0, @-1] exports the current, the first and the last layer. </label>
+            <label>Example: [0, @0/3] exports the current and all the layers between the first and the 3-rd one after the current layer. </label>
+            <label>Example: [0, @0/-3] exports the current and all the layers between the first and the 3-rd one before the current layer. </label>
+
+<!--            <label>Use the following tags at the beginning of the layer names to select what to export. The name of the exported image will be the one of the layer. </label>-->
+<!--                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>-->
+<!--            <label>Range tags: </label>-->
+<!--            <label>[N/M] export one image with all the layers from N below to M above (use @N for absolute indexing) </label>-->
+<!--            <label>[/M], [N/], [/] same as above, if one extreme is not specified all the layer in that direction are selected </label>-->
+<!--            <label>[N] export only the relative N-th layer, if 0 export the current (use @N for absolute index)</label>-->
+<!--            <label>Action tags: </label>-->
+<!--            <label>[s] skip: always skip exporting this layer </label>-->
+<!--            <label>[p] persistent: always export this layer </label>-->
+
         </page>
     </param>
 

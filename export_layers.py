@@ -2,19 +2,15 @@
 """ link in this folder the /usr/share/inkscape/extensions to make pycharm able to reference inkex
 (right click in the folder in the pycharm explorer -> Mark directory as -> source """
 import sys
-import types
 from typing import List, NamedTuple
-# sys.path.insert(0, '/usr/share/inkscape/extensions')
 from pathlib import Path
 import inkex
 from inkex import EffectExtension
 import os
 import subprocess
 import tempfile
-import shutil
 import copy
 import re
-import time
 import argparse
 
 
@@ -27,6 +23,7 @@ class ExportGroup(NamedTuple):
     indexes: List[int]
 
 
+# noinspection PyShadowingBuiltins
 def print(a):
     """ redefine the print to be able to show them in inkscape """
     if RUNNING_IN_INKSCAPE:
@@ -68,6 +65,8 @@ class PNGExport(EffectExtension):
                 image.attrib[f'{{{image.nsmap["xlink"]}}}href'] = str(abs_path)
 
         layers: List = doc.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
+        # ? invert the ordering such that the first is the top one
+        layers = layers[::-1]
         for i, layer in enumerate(layers):
             layer.attrib['style'] = 'display:none'
             if i in indexes:
@@ -77,6 +76,8 @@ class PNGExport(EffectExtension):
     def get_layers_and_export_groups(self):
         # ? the layers are imported starting from the bottom one and with name stored in .label
         layers: List = self.document.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
+        # ? invert the ordering such that the first is the top one
+        layers = layers[::-1]
         for layer in layers:
             # ? some weird check that was copied from somewhere
             label_attrib_name = f'{{{layer.nsmap["inkscape"]}}}label'
@@ -116,10 +117,12 @@ class PNGExport(EffectExtension):
                                     start += n_layers
                                 end = start + 1
                                 frames.append([start, end])
-                            elif boundaries[0].isnumeric():
+                            elif boundaries[0].lstrip('-').isnumeric():
                                 start = int(boundaries[0]) + i
-                                end = int(boundaries[0]) + 1 + i
-                                if start < 0 or end > n_layers:
+                                if start < 0:
+                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
+                                end = start + 1
+                                if end > n_layers:
                                     raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
                                 frames.append([start, end])
                             else:
@@ -129,24 +132,27 @@ class PNGExport(EffectExtension):
                         elif len(boundaries) == 2:
                             if boundaries[0][0] == '@':
                                 boundaries[0] = boundaries[0][1:]
-                                start = int(boundaries[0]) if boundaries[0] != '' else 0
-                                if start < 0:
-                                    start += n_layers
+                                start_supp = int(boundaries[0]) if boundaries[0] != '' else 0
+                                if start_supp < 0:
+                                    start_supp += n_layers
                             else:
-                                start = int(boundaries[0]) + i if boundaries[0] != '' else 0
-                                if start < 0:
-                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
+                                start_supp = int(boundaries[0]) + i if boundaries[0] != '' else 0
                             if boundaries[1][0] == '@':
                                 boundaries[1] = boundaries[1][1:]
-                                end = int(boundaries[1]) if boundaries[1] != '' else n_layers + 1
-                                if end >= 0:
-                                    end += 1
-                                else:
-                                    end += n_layers
+                                end_supp = int(boundaries[1]) if boundaries[1] != '' else n_layers - 1
+                                if end_supp < 0:
+                                    end_supp += n_layers
                             else:
-                                end = int(boundaries[1]) + i + 1 if boundaries[1] != '' else n_layers + 1
-                                if end > n_layers:
-                                    raise ValueError(f'invalid tag {boundaries[1]} on layer {label}')
+                                end_supp = int(boundaries[1]) + i if boundaries[1] != '' else n_layers - 1
+
+                            # ? define which one is the start and add +1 to the end
+                            start = min(start_supp, end_supp)
+                            end = max(start_supp, end_supp) + 1
+
+                            if start < 0:
+                                raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
+                            if end > n_layers:
+                                raise ValueError(f'invalid tag {boundaries[1]} on layer {label}')
 
                             # ? if the start or the end are not specified, use the max range
                             # if start < 0 or end > n_layers:
@@ -248,8 +254,7 @@ if __name__ == "__main__":
     if args.debug:
         RUNNING_IN_INKSCAPE = False
         print('running in pycharm')
-        input_file = '/home/lele/drive/Tablescope/github_repo_graphics/lightspeed/original/mineral_export.svg'
-        PNGExport().run([input_file, '--path', str(args.path)])
+        PNGExport().run([str(args.svg_path.absolute()), '--path', str(args.path.absolute())])
         # PNGExport().run([input_file, '--output=' + output_file])
     else:
         # print('running in inkscape')
