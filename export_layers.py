@@ -41,8 +41,7 @@ class PNGExport(EffectExtension):
         self.arg_parser.add_argument("--path", action="store", dest="path", default="~/", help="")
         self.arg_parser.add_argument("--filename_prefix", action="store", dest="filename_prefix", default="", help="")
         self.arg_parser.add_argument("--filename_postfix", action="store", dest="filename_postfix", default="", help="")
-        self.arg_parser.add_argument('-f', '--filetype', action='store', dest='filetype', default='png',
-                                     help='Exported file type')
+        self.arg_parser.add_argument('-f', '--filetype', action='store', dest='filetype', default='png', help='Exported file type')
         self.arg_parser.add_argument("--dpi", action="store", type=int, dest="dpi", default=300)
 
     def export_layers(self, output_file, indexes):
@@ -65,17 +64,19 @@ class PNGExport(EffectExtension):
                 image.attrib[f'{{{image.nsmap["xlink"]}}}href'] = str(abs_path)
 
         layers: List = doc.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
+        # ? remove the nested layers
+        layers = [layer for layer in layers if layer.getparent().getparent() is None]
         # ? invert the ordering such that the first is the top one
         layers = layers[::-1]
         for i, layer in enumerate(layers):
-            layer.attrib['style'] = 'display:none'
-            if i in indexes:
-                layer.attrib['style'] = 'display:inline'
+            layer.attrib['style'] = 'display:inline' if i in indexes else 'display:none'
         doc.write(str(output_file))
 
     def get_layers_and_export_groups(self):
         # ? the layers are imported starting from the bottom one and with name stored in .label
         layers: List = self.document.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
+        # ? remove the nested layers
+        layers = [layer for layer in layers if layer.getparent().getparent() is None]
         # ? invert the ordering such that the first is the top one
         layers = layers[::-1]
         for layer in layers:
