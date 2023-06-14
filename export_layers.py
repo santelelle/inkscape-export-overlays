@@ -1,11 +1,14 @@
 #! /usr/bin/env python
 """ link in this folder the /usr/share/inkscape/extensions to make pycharm able to reference inkex
 (right click in the folder in the pycharm explorer -> Mark directory as -> source """
+from __future__ import annotations
 import sys
-from typing import List, NamedTuple
+from dataclasses import dataclass, field
+from typing import List, Union, Dict, Tuple
 from pathlib import Path
 import inkex
-from inkex import EffectExtension
+from enum import Enum
+from inkex import EffectExtension, Layer
 import os
 import subprocess
 import tempfile
@@ -13,14 +16,76 @@ import copy
 import re
 import argparse
 
+TOKEN_SEPARATOR = ','
+FRAME_SEPARATOR = ':'
 
-RUNNING_IN_INKSCAPE = True
-VALID_ACTIONS = ['s', 'p']
+class Property(Enum):
+    PERSISTENT = 0
+    SKIP = 1
 
 
-class ExportGroup(NamedTuple):
-    name: str
-    indexes: List[int]
+# ? redefine the Layer __repr__ to make the debugging of the code easier
+Layer.__repr__ = lambda self: self.label
+
+
+@dataclass
+class LayerWithHierarchy:
+    layer: Layer
+    depth: int
+
+    parent: Union[LayerWithHierarchy, None] = None
+    childs: List[LayerWithHierarchy] = field(default_factory=list)
+
+    tag: str = None
+    label: str = None
+    tokens_properties: List[str] = field(default_factory=list)
+    tokens_frames: List[str] = field(default_factory=list)
+    tokens_selections: List[str] = field(default_factory=list)
+    tokens_exclusions: List[str] = field(default_factory=list)
+
+    marker: str = None
+    selections: List[str] = field(default_factory=list)
+
+    properties: List = field(default_factory=list)
+
+    def __post_init__(self):
+        tags = re.findall(r'\[(.*?)\]', self.layer.label)
+        if len(tags) > 1:
+            raise ValueError(f'please specify only one tag per layer, got multiple ones on {self.layer.label}')
+        self.tag = tags[0] if tags else None
+        self.label = self.layer.label.replace(f'[{self.tag}]', '')
+        tokens = self.tag.split(TOKEN_SEPARATOR) if self.tag else []
+        self.parse_tokens(tokens)
+
+    def parse_tokens(self, tokens: List[str]) -> None:
+        for token in tokens:
+            if token in {'p', 's'}:
+                self.tokens_properties.append(token)
+                if token == 'p':
+                    self.properties.append(Property.PERSISTENT)
+                    continue
+                if token == 's':
+                    self.properties.append(Property.SKIP)
+                    continue
+            if token.startswith('!'):
+                self.tokens_exclusions.append(token[1:])
+                continue
+
+            if token.startswith('m'):
+                self.marker = token
+                continue
+
+            if token.startswith('i'):
+                self.tokens_selections.append(token)
+                self.selections.append(token[1:])
+                continue
+
+            self.tokens_frames.append(token)
+
+    def __repr__(self):
+        depth = f'd:{self.depth} '
+        childs = f'c:{len(self.childs)} '
+        return   f'{depth}{childs}{self.layer.label}'
 
 
 # noinspection PyShadowingBuiltins
@@ -32,168 +97,192 @@ def print(a):
         sys.stdout.write(f'{a}\n')
 
 
-class PNGExport(EffectExtension):
+def get_layer_depth(layer: Layer, max_depth: int = 10) -> int:
+    for depth in range(max_depth):
+        if not isinstance(layer.getparent(), Layer):
+            return depth
+        layer = layer.getparent()
+    return -1
+
+
+def relative_or_absolute_token_to_index(token: str, current_idx: int, n_layers: int) -> int:
+    if token[0] == '@':
+        idx = int(token[1:])
+        if idx < 0:
+            idx += n_layers
+        return idx
+
+    idx = int(token) + current_idx
+    return idx
+
+
+def get_frames_idxs(layer_h: LayerWithHierarchy, current_idx: int, n_layers: int):
+    selected_idxs = []
+    for token in layer_h.tokens_frames:
+        if FRAME_SEPARATOR not in token:
+            # ? [number] select the specified layer with relative (absolute if preceded by @) position
+            selected_idxs.append(relative_or_absolute_token_to_index(token, current_idx, n_layers))
+            continue
+
+        boundaries = token.split(FRAME_SEPARATOR)
+        if len(boundaries) > 2:
+            raise ValueError(f'invalid token {token} in {layer_h.layer.label}')
+
+        start_str, end_str = token.split(FRAME_SEPARATOR)
+        # ? [/] or [number/] or [/number] select the specified layers range with relative (absolute if preceded by @) position
+        # ?     where the empty position is the min or max layer number
+        # ? [number/number] select the specified layers range with relative (absolute if preceded by @) position
+
+        if start_str == '':
+            start = 0
+        else:
+            start = relative_or_absolute_token_to_index(start_str, current_idx, n_layers)
+        if end_str == '':
+            end = n_layers
+        else:
+            end = relative_or_absolute_token_to_index(end_str, current_idx, n_layers)
+
+        selected_idxs.extend(range(min(start, end), max(start, end) + 1))
+
+    return sorted(set(selected_idxs))
+
+
+
+class ExportLayers(EffectExtension):
     def __init__(self):
         """init the effect library and get options from gui"""
         super().__init__()
         # ? all the parsed arguments will be available in self.options
-        self.arg_parser.add_argument("--tab")  # ? dummy args just for inkscape
-        self.arg_parser.add_argument("--path", action="store", dest="path", default="~/", help="")
-        self.arg_parser.add_argument("--filename_prefix", action="store", dest="filename_prefix", default="", help="")
-        self.arg_parser.add_argument("--filename_postfix", action="store", dest="filename_postfix", default="", help="")
+        self.arg_parser.add_argument('--tab')  # ? dummy args just for inkscape
+        self.arg_parser.add_argument('--path', action='store', dest='path', default='~/', help='')
+        self.arg_parser.add_argument('--filename_prefix', action='store', dest='filename_prefix', default='', help='')
+        self.arg_parser.add_argument('--filename_postfix', action='store', dest='filename_postfix', default='', help='')
         self.arg_parser.add_argument('-f', '--filetype', action='store', dest='filetype', default='png', help='Exported file type')
-        self.arg_parser.add_argument("--dpi", action="store", type=int, dest="dpi", default=300)
+        self.arg_parser.add_argument('--dpi', action="store", type=int, dest='dpi', default=300)
 
-    def export_layers(self, output_file, indexes):
-        """
-        Export selected layers of SVG to the file
-        """
-        doc = copy.deepcopy(self.document)
-        images = doc.xpath('//svg:image', namespaces=inkex.NSS)
+    def effect(self) -> None:
+        output_dir = Path(self.options.path)
+        layers, export_groups = self.get_layers_and_export_groups()
 
-        for image in images:
-            image_path: str = image.attrib[f'{{{image.nsmap["xlink"]}}}href']
-            # ? skip the path correction if the image was embedded
-            if image_path.startswith('data:'):
-                continue
-            else:
-                if RUNNING_IN_INKSCAPE:
-                    abs_path = image_path
-                else:
-                    abs_path = Path(self.svg.base).parent / image_path
+        if not os.path.exists(os.path.join(output_dir)):
+            os.makedirs(os.path.join(output_dir))
+
+        # ? we make a copy to not modify the original document
+        document_supp = copy.deepcopy(self.document)
+        images = self.document.xpath('//svg:image', namespaces=inkex.NSS)
+
+        if not RUNNING_IN_INKSCAPE:
+            for image in images:
+                image_path: str = image.attrib[f'{{{image.nsmap["xlink"]}}}href']
+                abs_path = Path(self.svg.base).parent / image_path
                 image.attrib[f'{{{image.nsmap["xlink"]}}}href'] = str(abs_path)
 
-        layers: List = doc.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
-        # ? remove the nested layers
-        layers = [layer for layer in layers if layer.getparent().getparent() is None]
-        # ? invert the ordering such that the first is the top one
-        layers = layers[::-1]
-        for i, layer in enumerate(layers):
-            layer.attrib['style'] = 'display:inline' if i in indexes else 'display:none'
-        doc.write(str(output_file))
+        tempfile_path = Path(tempfile.gettempdir()) / f'export_layers_tmp.svg'
+        document_supp.write(str(tempfile_path))
 
-    def get_layers_and_export_groups(self):
+        for name, indexes in export_groups.items():
+            self.change_file_visibilities(document_supp, tempfile_path, indexes)
+
+            filename = f'{self.options.filename_prefix}{name}{self.options.filename_postfix}'
+
+            if self.options.filetype == 'png':
+                output_path = output_dir / (filename + '.png')
+                self.export_to_png(tempfile_path, output_path)
+                continue
+            if self.options.filetype == "pdf":
+                output_path = output_dir / (filename + '.pdf')
+                self.export_to_pdf(tempfile_path, output_path)
+                continue
+            if self.options.filetype == "latex":
+                output_path = output_dir / (filename + '.latex')
+                self.export_to_latex(tempfile_path, output_path)
+                continue
+
+
+    def get_layers(self, document) -> List[LayerWithHierarchy]:
         # ? the layers are imported starting from the bottom one and with name stored in .label
-        layers: List = self.document.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
-        # ? remove the nested layers
-        layers = [layer for layer in layers if layer.getparent().getparent() is None]
-        # ? invert the ordering such that the first is the top one
-        layers = layers[::-1]
-        for layer in layers:
-            # ? some weird check that was copied from somewhere
-            label_attrib_name = f'{{{layer.nsmap["inkscape"]}}}label'
-            if label_attrib_name not in layer.attrib:
-                raise AttributeError
+        layers: List = document.xpath('//svg:g[@inkscape:groupmode="layer"]', namespaces=inkex.NSS)
+        # ? reorganize everything using the nested layers
+        layers_with_hierarchy = self.get_layers_with_hierarchy(layers)
+        return layers_with_hierarchy
 
-        n_layers = len(layers)
-        reg = re.compile('\[(([@]?-?\d*\/[@]?-?\d*|[a-z]|[@]?-?\d+)(,[@]?-?\d*\/[@]?-?\d*|,[a-z]|,[@]?-?\d+)*)\]')
+    def get_layers_and_export_groups(self) -> Tuple[List[LayerWithHierarchy], Dict[str, List[int]]]:
+        layers_with_hierarchy = self.get_layers(self.document)
+        n_layers = len(layers_with_hierarchy)
 
-        # ? the actions give a specific function to the specific layer, for example [s] always skip the layer
-        layers_actions = []
-        # ? the frames select a relative interval (or multiple relative interval) of layer to make visible before
-        # ? exporting
-        layers_frames = []
-        try:
-            # ? read all the layers tags
-            for i, layer in enumerate(layers):
-                label = layer.label
+        export_groups = {}
+        for i, layer_h in enumerate(layers_with_hierarchy):
+            label = layer_h.label
 
-                actions = []
-                frames = []
-                m = reg.match(label)
-                if m is not None:
-                    actions_and_frames = m.group(1).split(',')
-                    for action_or_frame in actions_and_frames:
-                        boundaries = action_or_frame.split('/')
-                        # ? specifier can be of multiple types
-                        # ? [number] select the specified layer with relative position
-                        # ? [number/number] select the specified layers range with relative position
-                        # ? [/] or [number/] or [/number] select the specified layers range with relative position
-                        # ?     where the empty position is the min or max layer number
-                        if len(boundaries) == 1:
-                            if boundaries[0][0] == '@':
-                                boundaries[0] = boundaries[0][1:]
-                                start = int(boundaries[0])
-                                if start < 0:
-                                    start += n_layers
-                                end = start + 1
-                                frames.append([start, end])
-                            elif boundaries[0].lstrip('-').isnumeric():
-                                start = int(boundaries[0]) + i
-                                if start < 0:
-                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
-                                end = start + 1
-                                if end > n_layers:
-                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
-                                frames.append([start, end])
-                            else:
-                                if boundaries[0] not in VALID_ACTIONS:
-                                    raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
-                                actions.append(boundaries[0])
-                        elif len(boundaries) == 2:
-                            if boundaries[0][0] == '@':
-                                boundaries[0] = boundaries[0][1:]
-                                start_supp = int(boundaries[0]) if boundaries[0] != '' else 0
-                                if start_supp < 0:
-                                    start_supp += n_layers
-                            else:
-                                start_supp = int(boundaries[0]) + i if boundaries[0] != '' else 0
-                            if boundaries[1][0] == '@':
-                                boundaries[1] = boundaries[1][1:]
-                                end_supp = int(boundaries[1]) if boundaries[1] != '' else n_layers - 1
-                                if end_supp < 0:
-                                    end_supp += n_layers
-                            else:
-                                end_supp = int(boundaries[1]) + i if boundaries[1] != '' else n_layers - 1
+            # ? indexes coming from the frames
+            frame_idxs = get_frames_idxs(layer_h, i, n_layers)
 
-                            # ? define which one is the start and add +1 to the end
-                            start = min(start_supp, end_supp)
-                            end = max(start_supp, end_supp) + 1
+            # ? indexes coming from the selections
+            if layer_h.selections:
+                raise NotImplementedError('selections not implemented yet')
 
-                            if start < 0:
-                                raise ValueError(f'invalid tag {boundaries[0]} on layer {label}')
-                            if end > n_layers:
-                                raise ValueError(f'invalid tag {boundaries[1]} on layer {label}')
-
-                            # ? if the start or the end are not specified, use the max range
-                            # if start < 0 or end > n_layers:
-                            #     raise ValueError(f'exceeding layers range {boundaries[0]} on layer {label}')
-                            frames.append([start, end])
-                        else:
-                            raise ValueError(f'empty tag is not valid on layer {label}')
-                layers_actions.append(actions)
-                layers_frames.append(frames)
-        except ValueError as e:
-            print(f'provided specifier are invalid: {e}')
-
-        # ? each export group includes the index of all the layers
-        export_groups = []
-        # ? handle actions
-        for i, (layer, layer_frames, layer_actions) in enumerate(zip(layers, layers_frames, layers_actions)):
-            id = layer.attrib['id']
-            label_clean = reg.sub('', layer.label)
-
-            export_index = []
-            for j, src_layer_actions in enumerate(layers_actions):
-                # ? check if the current index must be skipped
-                if 's' in src_layer_actions:
+            # ? indexes coming from the properties
+            for j, layer_h_supp in enumerate(layers_with_hierarchy):
+                if Property.SKIP in layer_h_supp.properties:
                     continue
-                # ? check if the current index is persistent
-                if 'p' in src_layer_actions and layer_frames:
-                    export_index.append(j)
-                # ? check if the current layer is inside any frame
-                for start, end in layer_frames:
-                    indexes = list(range(n_layers))[start:end]
-                    if j in indexes:
-                        export_index.append(j)
+                if Property.PERSISTENT in layer_h_supp.properties:
+                    if j not in frame_idxs:
+                        frame_idxs.append(j)
+
+            # ? apply the exclusions
+            for token in layer_h.tokens_exclusions:
+                idx = relative_or_absolute_token_to_index(token, i, n_layers)
+                if idx in frame_idxs:
+                    frame_idxs.remove(idx)
+
+            # ? assign the name to the export group
+            if frame_idxs:
+                if label not in export_groups:
+                    export_groups[label] = sorted(set(frame_idxs))
+                    continue
+
+                for n in range(999999):
+                    incremental_label = f'{label}_{n}'
+                    if incremental_label not in export_groups:
+                        export_groups[incremental_label] = sorted(set(frame_idxs))
                         break
 
-            if export_index:
-                export_groups.append(ExportGroup(label_clean, export_index))
+        return layers_with_hierarchy, export_groups
 
-        return layers, export_groups
+    @staticmethod
+    def get_layers_with_hierarchy(layers: List[Layer], max_depth: int = 10) -> List[LayerWithHierarchy]:
+        # ? revers the order of the layers such that the first one is the topmost in the inkscape layer view
+        layers = layers[::-1]
 
-    def exportToPng(self, svg_path, output_path):
+        # ? subdivide the layers by depth
+        layers_at_depth: List[List[LayerWithHierarchy]] = []
+        for depth in range(max_depth):
+            layers_at_this_depth = [LayerWithHierarchy(layer, depth) for layer in layers if get_layer_depth(layer) == depth]
+            if not layers_at_this_depth:
+                max_depth = depth - 1
+                break
+            layers_at_depth.append(layers_at_this_depth)
+
+        if len(layers_at_depth) == 1:
+            return layers_at_depth[0]
+
+        for depth in range(max_depth, 0, -1):
+            layers_at_this_depth = layers_at_depth[depth]
+            layers_at_previous_depth = layers_at_depth[depth - 1]
+            for layer_with_hierarchy in layers_at_this_depth:
+                parent = layer_with_hierarchy.layer.getparent()
+                parent_idx = [i for i, layer_h in enumerate(layers_at_previous_depth) if layer_h.layer == parent][0]
+                layers_at_previous_depth[parent_idx].childs.append(layer_with_hierarchy)
+        layers_with_hierarchy = layers_at_depth[0]
+        return layers_with_hierarchy
+
+    def change_file_visibilities(self, document_supp, output_file: Path, indexes: List[int]) -> None:
+        layers_with_hierarchy = self.get_layers(document_supp)
+        for i, layer_h in enumerate(layers_with_hierarchy):
+            layer_h.layer.attrib['style'] = 'display:inline' if i in indexes else 'display:none'
+        document_supp.write(str(output_file))
+
+    def export_to_png(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
         command = "inkscape %s -d %s -o \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
 
@@ -201,7 +290,7 @@ class PNGExport(EffectExtension):
             p.wait()
             p.kill()
 
-    def exportToPdf(self, svg_path, output_path):
+    def export_to_pdf(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
         command = "inkscape %s -d %s -o \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
 
@@ -209,7 +298,7 @@ class PNGExport(EffectExtension):
             p.wait()
             p.kill()
 
-    def exportToLatex(self, svg_path, output_path):
+    def export_to_latex(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
         command = "inkscape %s -d %s -o \"%s\" --export-latex \"%s\"" % (
             area_param, self.options.dpi, output_path, svg_path)
@@ -218,45 +307,23 @@ class PNGExport(EffectExtension):
             p.wait()
             p.kill()
 
-    def effect(self):
-        output_dir = Path(self.options.path)
-        layers, export_groups = self.get_layers_and_export_groups()
-
-        if not os.path.exists(os.path.join(output_dir)):
-            os.makedirs(os.path.join(output_dir))
-
-        for export_group in export_groups:
-            filename = f'{self.options.filename_prefix}{export_group.name}{self.options.filename_postfix}'
-
-            with tempfile.NamedTemporaryFile() as fp_svg:
-                dummy_path = Path(fp_svg.name)
-                self.export_layers(dummy_path, export_group.indexes)
-
-                if self.options.filetype == 'png':
-                    output_path = output_dir / (filename + '.png')
-                    self.exportToPng(dummy_path, output_path)
-                elif self.options.filetype == "pdf":
-                    output_path = output_dir / (filename + '.pdf')
-                    self.exportToPdf(dummy_path, output_path)
-                elif self.options.filetype == "latex":
-                    output_path = output_dir / (filename + '.latex')
-                    self.exportToLatex(dummy_path, output_path)
 
 
 if __name__ == "__main__":
     # ? all these arguments are meant to be used by pycharm only
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument("--svg_path", type=Path, help='the .svg path')
-    parser.add_argument("--path", type=Path, help='the output path')
+    parser.add_argument("--svg_path", type=Path, help='the .svg path', default='example.svg')
+    parser.add_argument("--output_path", type=Path, help='the output path', default='example_output')
 
     args, other_args = parser.parse_known_args()
 
     if args.debug:
         RUNNING_IN_INKSCAPE = False
         print('running in pycharm')
-        PNGExport().run([str(args.svg_path.absolute()), '--path', str(args.path.absolute())])
-        # PNGExport().run([input_file, '--output=' + output_file])
+        ExportLayers().run([str(args.svg_path.absolute()), '--path', str(args.output_path.absolute())])
+        # ExportLayers().run([input_file, '--output=' + output_file])
     else:
+        RUNNING_IN_INKSCAPE = True
         # print('running in inkscape')
-        PNGExport().run()
+        ExportLayers().run()

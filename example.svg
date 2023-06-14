@@ -25,16 +25,21 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.15616"
-     inkscape:cx="141.41641"
-     inkscape:cy="234.39662"
+     inkscape:cx="202.39413"
+     inkscape:cy="262.07445"
      inkscape:window-width="3424"
      inkscape:window-height="1393"
      inkscape:window-x="1925"
      inkscape:window-y="36"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g1" />
+     inkscape:current-layer="g1280" />
   <defs
      id="defs776" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer5"
+     inkscape:label="[-1,!@2]red circle excluding magenta dot"
+     style="display:none" />
   <g
      inkscape:label="[0]red circle with magenta dot"
      inkscape:groupmode="layer"
@@ -63,13 +68,13 @@
   <g
      inkscape:groupmode="layer"
      id="layer3"
-     inkscape:label="[1/2]range relative blue square, red circle and magenta dot"
+     inkscape:label="[1:2]range relative blue square, red circle, magenta dot"
      style="display:none" />
   <g
      inkscape:groupmode="layer"
      id="g1332"
      inkscape:label="[p]magenta dot"
-     style="display:none">
+     style="display:inline">
     <circle
        style="fill:#ff00ff;stroke-width:0.1"
        id="path1386"
@@ -80,17 +85,17 @@
   <g
      inkscape:groupmode="layer"
      id="g1280"
-     inkscape:label="[@-1/@-2]range absolute blue square, red circle and magenta dot"
+     inkscape:label="[@-2:@-3]range absolute blue square, red circle and magenta dot"
      style="display:none" />
   <g
      inkscape:groupmode="layer"
      id="g1"
-     inkscape:label="[0,@-1]star and circle"
-     style="display:inline">
+     inkscape:label="[0,@-2]star and circle"
+     style="display:none">
     <g
        inkscape:groupmode="layer"
        id="layer4"
-       inkscape:label="star"
+       inkscape:label="star nested layer"
        style="display:inline">
       <path
          sodipodi:type="star"
