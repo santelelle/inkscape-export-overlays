@@ -25,14 +25,14 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.15616"
-     inkscape:cx="202.39413"
+     inkscape:cx="180.33836"
      inkscape:cy="262.07445"
      inkscape:window-width="3424"
      inkscape:window-height="1393"
      inkscape:window-x="1925"
      inkscape:window-y="36"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g1280" />
+     inkscape:current-layer="layer7" />
   <defs
      id="defs776" />
   <g
@@ -72,9 +72,43 @@
      style="display:none" />
   <g
      inkscape:groupmode="layer"
+     id="layer6"
+     inkscape:label="[*e] pentagon with special name"
+     style="display:none" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer7"
+     inkscape:label="[#e] pentagon"
+     style="display:inline">
+    <path
+       sodipodi:type="star"
+       style="display:inline;opacity:0.474694;fill:#008000;stroke-width:1.5"
+       id="path250"
+       inkscape:flatsided="true"
+       sodipodi:sides="5"
+       sodipodi:cx="34.643002"
+       sodipodi:cy="22.197411"
+       sodipodi:r1="21.288183"
+       sodipodi:r2="17.222502"
+       sodipodi:arg1="0.92673502"
+       sodipodi:arg2="1.5550535"
+       inkscape:rounded="0"
+       inkscape:randomized="0"
+       d="M 47.42545,39.220799 22.402791,39.614758 14.295687,15.938535 34.30788,0.9118653 54.7832,15.301096 Z"
+       inkscape:transform-center-x="0.20711721"
+       inkscape:transform-center-y="-3.8681986"
+       transform="matrix(2,0,0,2,-19.182445,7.5392772)" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer8"
+     inkscape:label="this should not be exported"
+     style="display:none" />
+  <g
+     inkscape:groupmode="layer"
      id="g1332"
      inkscape:label="[p]magenta dot"
-     style="display:inline">
+     style="display:none">
     <circle
        style="fill:#ff00ff;stroke-width:0.1"
        id="path1386"

@@ -19,41 +19,55 @@
         <page name="about_tab" gui-text="About">
             <label appearance="header">Layer export</label>
 
-            <label> Use the following tags at the beginning of the layer names to select what to export. (Example layer name: [3/4]layername) </label>
-            <label> The name of the exported image will be the one of the tagged layer (with additional constant suffix/prefix that can be specified in the interface) </label>
+            <label> Use [] to define a tag at the beginning of some of your layer names to select what to export. (Example layer name: [3/4]layername) </label>
+            <label> The name of the exported image will be the original name of the tagged layer (with additional constant suffix/prefix that can be specified in the interface) </label>
+            <label> Multiple tokens of different types can be written inside a tag. Use the comma (,) to separate them. For example [2,3,5] is a valid tag with 3 tokens </label>
+            <label> All the selection will be made just with the outermost parent layers, all the child layers will follow the visibility of the parent </label>
 
-            <label>Range tags: </label>
-            <label>- [@N/@M] select all the layers from the N-th to the M-th. The @ define an absolute coordinate. </label>
-            <label>When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>
-            <label>Example: [@3, @-2] exports all the layers starting from the absolute 3rd layer (starting from the top) and the second to last layer </label>
-            <label>- [N/M] select all the layers from the N-th to M-th relative to the current layer. </label>
-            <label>Example: [-2, 3] exports all the layers starting from the one 2 positions above to the one 3 positions below </label>
-            <label>- [/M], [N/], [/], [/@M], [@N/] same as the two cases above, if one extreme is not specified all the layer in that direction are selected. </label>
-            <label>Example: [/N] exports all the layer from the first one to the N-th relative to the current layer </label>
-            <label>Example: [/@N] exports all the layer from the first one to the absolute N-th layer </label>
-            <label>- [N] export only the relative N-th layer. </label>
-            <label>Example: [0] exports only the current layer </label>
-            <label>Example: [-1] exports only the layer above the current </label>
+            <label> </label>
 
-            <label>Action tags: </label>
-            <label>- [s] skip: always skip exporting this layer, even if it's included in a range </label>
-            <label>- [p] persistent: always export this layer, no matter if it's included in ranges </label>
+            <label>Range tokens: </label>
+            <label> [N:M] or [N:] or [:M] or [:] or [@N:@M] or [@N:] or [:@M] </label>
+            <label> Add to the export selection all the layers from the N-th to the M-th included (relative to the currently tagged layer, layers below the current one have positive numbers, layers before negative). </label>
+            <label> The @ define an absolute coordinate instead. Negative absolute coordinates counts from the bottom (e.g. [@-1] is the last layer, [@-2] is the second to last, ...) </label>
+            <label>     Example: [3, @-2] exports all the layers starting from the relative 3rd layer (3 layers down the tagged one) and the second to last layer </label>
 
-            <label>Concatenation: </label>
-            <label>- Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). </label>
-            <label>Example: [0, @0, @-1] exports the current, the first and the last layer. </label>
-            <label>Example: [0, @0/3] exports the current and all the layers between the first and the 3-rd one after the current layer. </label>
-            <label>Example: [0, @0/-3] exports the current and all the layers between the first and the 3-rd one before the current layer. </label>
+            <label> </label>
 
-<!--            <label>Use the following tags at the beginning of the layer names to select what to export. The name of the exported image will be the one of the layer. </label>-->
-<!--                Multiple tags can be selected separating them with a comma (e.g. [3/4,5/7,s]). When using absolute indexing with @ also negative number are allowed, [@-1] is the last layer, [@-2] is the second lasts and so on. </label>-->
-<!--            <label>Range tags: </label>-->
-<!--            <label>[N/M] export one image with all the layers from N below to M above (use @N for absolute indexing) </label>-->
-<!--            <label>[/M], [N/], [/] same as above, if one extreme is not specified all the layer in that direction are selected </label>-->
-<!--            <label>[N] export only the relative N-th layer, if 0 export the current (use @N for absolute index)</label>-->
-<!--            <label>Action tags: </label>-->
-<!--            <label>[s] skip: always skip exporting this layer </label>-->
-<!--            <label>[p] persistent: always export this layer </label>-->
+            <label>Single selection tokens: </label>
+            <label> [N] or [@N] </label>
+            <label> Add to the export selection a single layer (@ works the same as in the range tokens). </label>
+            <label>     Example: [0] exports only the current layer </label>
+            <label>     Example: [-1] exports only the layer above the current </label>
+            <label>     Example: [@-1] exports the last layer </label>
+
+            <label> </label>
+
+            <label>Property tokens: </label>
+            <label>     [s] Skip: always exclude this layer from all selections, even if it's included in a range </label>
+            <label>     [p] Persistent: always include this layer in all selections, no matter if it's included in ranges </label>
+
+            <label> </label>
+
+            <label>Exclusion tokens: </label>
+            <label> [!N] or [!@N] </label>
+            <label> Exclude the Nth (relative) or @Nth (absolute) layer from this specific selection. </label>
+
+            <label> </label>
+
+            <label>Mark or Mark selection tokens: </label>
+            <label>     [#a] mark the current layer with the letter following the # sign </label>
+            <label>     [*a] add to the current selection all the layers that are marked with the letter following the * sign </label>
+
+            <label> </label>
+            <label> Example layers situation </label>
+            <label> layer0 </label>
+            <label> [0] layer1 </label>
+            <label> [@0] layer2 </label>
+            <label> [p] layer3 </label>
+            <label> If we select the .png format, we will obtain 2 images: </label>
+            <label> layer1.png which contains the content of layer1 (from the single selection token) and the content of layer3 (because of the persistent token) </label>
+            <label> layer2.png which contains the content of layer0 (from the absolute single selection token) and the content of layer3 (because of the persistent token) </label>
 
         </page>
     </param>

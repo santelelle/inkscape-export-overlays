@@ -18,6 +18,9 @@ import argparse
 
 TOKEN_SEPARATOR = ','
 FRAME_SEPARATOR = ':'
+EXCLUDE_SYMBOL = '!'
+MARK_SYMBOL = '#'
+SELECT_MARK_SYMBOL = '*'
 
 class Property(Enum):
     PERSISTENT = 0
@@ -67,12 +70,12 @@ class LayerWithHierarchy:
                 if token == 's':
                     self.properties.append(Property.SKIP)
                     continue
-            if token.startswith('!'):
+            if token.startswith(EXCLUDE_SYMBOL):
                 self.tokens_exclusions.append(token[1:])
                 continue
 
-            if token.startswith('m'):
-                self.marker = token
+            if token.startswith(MARK_SYMBOL):
+                self.marker = token[1:]
                 continue
 
             if token.startswith('i'):
@@ -116,9 +119,15 @@ def relative_or_absolute_token_to_index(token: str, current_idx: int, n_layers: 
     return idx
 
 
-def get_frames_idxs(layer_h: LayerWithHierarchy, current_idx: int, n_layers: int):
+def get_frames_idxs(layer_h: LayerWithHierarchy, layers_h: List[LayerWithHierarchy], current_idx: int):
+    n_layers = len(layers_h)
     selected_idxs = []
     for token in layer_h.tokens_frames:
+        if token.startswith(SELECT_MARK_SYMBOL):
+            # ? select layer/layers by mark
+            selected_idxs.extend([i for i, l_h in enumerate(layers_h) if l_h.marker == token[1:]])
+            continue
+
         if FRAME_SEPARATOR not in token:
             # ? [number] select the specified layer with relative (absolute if preceded by @) position
             selected_idxs.append(relative_or_absolute_token_to_index(token, current_idx, n_layers))
@@ -214,8 +223,11 @@ class ExportLayers(EffectExtension):
         for i, layer_h in enumerate(layers_with_hierarchy):
             label = layer_h.label
 
+            if not layer_h.tokens_frames:
+                continue
+
             # ? indexes coming from the frames
-            frame_idxs = get_frames_idxs(layer_h, i, n_layers)
+            frame_idxs = get_frames_idxs(layer_h, layers_with_hierarchy, i)
 
             # ? indexes coming from the selections
             if layer_h.selections:
