@@ -156,7 +156,6 @@ def get_frames_idxs(layer_h: LayerWithHierarchy, layers_h: List[LayerWithHierarc
     return sorted(set(selected_idxs))
 
 
-
 class ExportLayers(EffectExtension):
     def __init__(self):
         """init the effect library and get options from gui"""
@@ -206,7 +205,6 @@ class ExportLayers(EffectExtension):
                 output_path = output_dir / (filename + '.latex')
                 self.export_to_latex(tempfile_path, output_path)
                 continue
-
 
     def get_layers(self, document) -> List[LayerWithHierarchy]:
         # ? the layers are imported starting from the bottom one and with name stored in .label
@@ -296,15 +294,22 @@ class ExportLayers(EffectExtension):
 
     def export_to_png(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
-        command = "inkscape %s -d %s -o \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}"'
+
+        # ? set the environment varialbe SELF_CALL to 1. This is needed to fix a bug with inkscape
+        os.environ['SELF_CALL'] = '1'
 
         with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
-            p.wait()
+            return_code = p.wait()
+            # print(f'inkscape return code: {return_code}')
+            stdout, stderr = p.communicate()
+            # print(f'inkscape stdout: {stdout}')
+            # print(f'inkscape stderr: {stderr}')
             p.kill()
 
     def export_to_pdf(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
-        command = "inkscape %s -d %s -o \"%s\" \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}"'
 
         with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
             p.wait()
@@ -312,13 +317,12 @@ class ExportLayers(EffectExtension):
 
     def export_to_latex(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
-        command = "inkscape %s -d %s -o \"%s\" --export-latex \"%s\"" % (
-            area_param, self.options.dpi, output_path, svg_path)
+        # command = "inkscape %s -d %s -o \"%s\" --export-latex \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" --export-latex "{svg_path}"'
 
         with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
             p.wait()
             p.kill()
-
 
 
 if __name__ == "__main__":
@@ -333,7 +337,7 @@ if __name__ == "__main__":
     if args.debug:
         RUNNING_IN_INKSCAPE = False
         print('running in pycharm')
-        ExportLayers().run([str(args.svg_path.absolute()), '--path', str(args.output_path.absolute())])
+        ExportLayers().run([str(args.svg_path.absolute()), '--path', str(args.output_path.absolute()), '--dpi', '300'])
         # ExportLayers().run([input_file, '--output=' + output_file])
     else:
         RUNNING_IN_INKSCAPE = True

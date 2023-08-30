@@ -14,7 +14,7 @@
                <option value="pdf">PDF</option>
                <option selected="selected" value="latex">PDF + LaTeX</option>
             </param>
-            <param name="dpi" type="float" min="0.0" max="1000.0" gui-text="Export DPI">300</param>
+            <param name="dpi" type="int" min="10" max="1000" gui-text="Export DPI">300</param>
         </page>
         <page name="about_tab" gui-text="About">
             <label appearance="header">Layer export</label>
