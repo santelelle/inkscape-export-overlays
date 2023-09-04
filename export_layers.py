@@ -294,7 +294,7 @@ class ExportLayers(EffectExtension):
 
     def export_to_png(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
-        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}"'
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}" --export-background="#FFFFFF" --export-background-opacity=0'
 
         # ? set the environment varialbe SELF_CALL to 1. This is needed to fix a bug with inkscape
         os.environ['SELF_CALL'] = '1'
@@ -309,7 +309,7 @@ class ExportLayers(EffectExtension):
 
     def export_to_pdf(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
-        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}"'
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" "{svg_path}" --export-background="#FFFFFF" --export-background-opacity=0'
 
         with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
             p.wait()
@@ -318,7 +318,7 @@ class ExportLayers(EffectExtension):
     def export_to_latex(self, svg_path: Path, output_path: Path) -> None:
         area_param = '-C'
         # command = "inkscape %s -d %s -o \"%s\" --export-latex \"%s\"" % (area_param, self.options.dpi, output_path, svg_path)
-        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" --export-latex "{svg_path}"'
+        command = f'inkscape {area_param} -d {self.options.dpi} -o "{output_path}" --export-latex "{svg_path}" --export-background="#FFFFFF" --export-background-opacity=0'
 
         with subprocess.Popen(command.encode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
             p.wait()
